@@ -22,9 +22,13 @@ ESPECIFICACIONES DEL .CSV:
 
 *todos los apellidos tienen que ser iguales.
 
-en el apartado "gender", solo hay hombres y mujeres representados como (H o M).
+*en el apartado "gender", solo hay hombres y mujeres representados como (H o M).
 
-los valores para "was_king", "is_king", "is_dead" es de 0 o 1. 1 siendo afirmativo y 0 negativo.
+*los valores para "was_king", "is_king", "is_dead" es de 0 o 1. 1 siendo afirmativo y 0 negativo.
+
+*Solo puede ser un archivo.CSV, no se pueden crear mas.
+
+*El archivo tiene que tener los headers incluidos de forma obligatoria.
 
 2. Mostrar la linea de sucesión actual (solo los familiares vivos).
 
@@ -64,11 +68,4 @@ especificaciones:
 12.en teoría la raíz seria siempre la misma ya que es el primer rey del reino.
 13.el output tiene que mostrar solo los vivos en forma de lista (no es necesario que se vea en forma de árbol)
 14.tios comparten el mismo padre.
-
-
-
-
-
-
-
- 
+15.no se pueden usar las librerías <queue> ni <stack> en el caso de que se quieran usar.
