@@ -1,8 +1,7 @@
-id;name;last_name;gender;age;id_father;is_dead;was_king;is_king
-4;Alice;Royal;M;38;-1;0;0;0
-1;Arthur;Royal;H;80;0;0;1;1
-6;Edward;Royal;H;18;3;0;0;0
-3;William;Royal;H;40;2;0;0;0
-2;Richard;Royal;H;68;1;0;1;1
-5;Catherine;Royal;M;20;3;0;0;0
-7;Victoria;Royal;M;50;4;0;0;0
+3;Henry;Royal;H;50;1;0;0;0
+1;Arthur;Royal;H;80;;0;1;1
+6;Louis;Royal;H;20;3;0;0;0
+2;William;Royal;H;55;1;0;0;0
+5;Charlotte;Royal;M;25;2;0;0;0
+4;George;Royal;H;30;2;0;0;0
+7;James;Royal;H;15;3;0;0;0
