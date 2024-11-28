@@ -1,0 +1,5 @@
+1. agregar una función para añadir familiares al .CSV
+2. agregar una función para eliminar familiares al .CSV
+3. mejorar los couts para que se vean mas notables los cambios
+4. cambiar la función complex case y extender el .CSV con mas personas (ordenado y desordenado)
+NOTA: asegurarse que no se borren los encabezados del .CSV

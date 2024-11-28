@@ -3,12 +3,13 @@
 #include <sstream>
 #include <string>
 #include <algorithm>
+using namespace std;
 
 // Definición del nodo del árbol
 struct Node {
     int id;
-    std::string name;
-    std::string last_name;
+    string name;
+    string last_name;
     char gender;
     int age;
     int id_father;
@@ -18,71 +19,78 @@ struct Node {
     Node* left;
     Node* right;
 
-    Node(int i, std::string n, std::string ln, char g, int a, int idf, bool dead, bool wk, bool ik)
+    Node(int i, string n, string ln, char g, int a, int idf, bool dead, bool wk, bool ik)
         : id(i), name(n), last_name(ln), gender(g), age(a), id_father(idf), is_dead(dead), was_king(wk), is_king(ik), left(nullptr), right(nullptr) {}
 };
 
+// Constante del archivo CSV
+
+const string FILE_NAME = "family_tree_ordered.csv";
+
 // Prototipos de funciones
-Node* readCSV(const std::string& filename);
-bool validateCSVLine(const std::string& line, int expected_columns);
+Node* readCSV();
+bool validateCSVLine(const string& line, int expected_columns);
 void printSuccessionLine(Node* root);
 Node* findSuccessor(Node* root);
 Node* findFirstLivingDescendant(Node* node);
 Node* findSibling(Node* root);
 Node* findUncle(Node* root);
 Node* findAncestorWithMultipleChildren(Node* root);
-void updateCSV(Node* root, const std::string& filename);
-void writeNodeToFile(Node* node, std::ofstream& file);
+void updateCSV(Node* root);
+void writeNodeToFile(Node* node, ofstream& file);
 void modifyNode(Node* root);
 Node* findNodeByID(Node* root, int id);
+
+// Funciones auxiliares
+
 void runTests(Node* root);
-void createComplexCSV(const std::string& filename);
+void createComplexCSV(const string& filename);
 void simulateComplexRun();
 
 // Función para leer el CSV y construir el árbol binario
-Node* readCSV(const std::string& filename) {
-    std::ifstream file(filename);
+Node* readCSV() {
+    ifstream file(FILE_NAME);
     if (!file.is_open()) {
-        std::cerr << "Error al abrir el archivo CSV.\n";
+        cerr << "Error al abrir el archivo CSV.\n";
         return nullptr;
     }
 
     Node* root = nullptr;
     Node* nodes[21] = {nullptr}; // Arreglo para guardar nodos por su ID (máximo 20 nodos)
 
-    std::string line;
+    string line;
     bool isFirstLine = true;
     const int expected_columns = 9;
 
-    while (std::getline(file, line)) {
+    while (getline(file, line)) {
         if (isFirstLine) { // Saltar los headers
             isFirstLine = false;
             continue;
         }
 
         if (!validateCSVLine(line, expected_columns)) {
-            std::cerr << "Línea inválida encontrada: " << line << "\n";
+            cerr << "Línea inválida encontrada: " << line << "\n";
             continue; // Ignorar líneas inválidas
         }
 
-        std::stringstream ss(line);
-        std::string word;
-        std::string data[9];
+        stringstream ss(line);
+        string word;
+        string data[9];
         int index = 0;
 
-        while (std::getline(ss, word, ';') && index < 9) {
+        while (getline(ss, word, ';') && index < 9) {
             data[index++] = word;
         }
 
-        int id = std::stoi(data[0]);
-        std::string name = data[1];
-        std::string last_name = data[2];
+        int id = stoi(data[0]);
+        string name = data[1];
+        string last_name = data[2];
         char gender = data[3][0];
-        int age = std::stoi(data[4]);
-        int id_father = data[5].empty() ? -1 : std::stoi(data[5]);
-        bool is_dead = std::stoi(data[6]);
-        bool was_king = std::stoi(data[7]);
-        bool is_king = std::stoi(data[8]);
+        int age = stoi(data[4]);
+        int id_father = data[5].empty() ? -1 : stoi(data[5]);
+        bool is_dead = stoi(data[6]);
+        bool was_king = stoi(data[7]);
+        bool is_king = stoi(data[8]);
 
         Node* newNode = new Node(id, name, last_name, gender, age, id_father, is_dead, was_king, is_king);
         nodes[id] = newNode;
@@ -105,7 +113,7 @@ Node* readCSV(const std::string& filename) {
 
 // Funcion para validar el .CSV
 
-bool validateCSVLine(const std::string& line, int expected_columns) { 
+bool validateCSVLine(const string& line, int expected_columns) { 
     int count = std::count(line.begin(), line.end(), ';') + 1;
     return count == expected_columns;
 }
@@ -114,8 +122,8 @@ bool validateCSVLine(const std::string& line, int expected_columns) {
 void printSuccessionLine(Node* root) {
     if (!root) return;
     if (!root->is_dead) {
-        std::cout << "ID: " << root->id << ", Nombre: " << root->name << " " << root->last_name
-                  << ", Edad: " << root->age << "\n";
+        cout << "ID: " << root->id << ", Nombre: " << root->name << " " << root->last_name
+             << ", Edad: " << root->age << "\n";
     }
     printSuccessionLine(root->left);
     printSuccessionLine(root->right);
@@ -159,7 +167,6 @@ Node* findSuccessor(Node* root) {
 }
 
 // Buscar hermano
-
 Node* findSibling(Node* root) {
     if (!root || root->id_father == -1) return nullptr; // Sin padre => Sin hermanos
 
@@ -172,8 +179,7 @@ Node* findSibling(Node* root) {
     return nullptr;
 }
 
-// Buscar tios
-
+// Buscar tíos
 Node* findUncle(Node* root) {
     if (!root || root->id_father == -1) return nullptr;
 
@@ -186,8 +192,7 @@ Node* findUncle(Node* root) {
     return nullptr;
 }
 
-// Buscar ancenstros con multiples hijos
-
+// Buscar ancestros con múltiples hijos
 Node* findAncestorWithMultipleChildren(Node* root) {
     if (!root || root->id_father == -1) return nullptr;
 
@@ -205,32 +210,32 @@ Node* findFirstLivingDescendant(Node* node) {
 }
 
 // Actualizar el archivo CSV
-void updateCSV(Node* root, const std::string& filename) {
+void updateCSV(Node* root) {
     if (!root) {
-        std::cout << "El árbol está vacío, no hay datos para guardar.\n";
+        cout << "El árbol está vacío, no hay datos para guardar.\n";
         return;
     }
 
-    std::ofstream file(filename);
+    ofstream file(FILE_NAME);
     if (!file.is_open()) {
-        std::cerr << "Error al abrir el archivo: " << filename << "\n";
+        cerr << "Error al abrir el archivo: " << FILE_NAME << "\n";
         return;
     }
 
     writeNodeToFile(root, file);
     file.close();
-    std::cout << "Datos actualizados en el archivo CSV correctamente.\n";
+    cout << "Datos actualizados en el archivo CSV correctamente.\n";
 }
 
 // Escribir un nodo en el archivo
-void writeNodeToFile(Node* node, std::ofstream& file) {
+void writeNodeToFile(Node* node, ofstream& file) {
     if (!node) return;
     file << node->id << ";"
          << node->name << ";"
          << node->last_name << ";"
          << node->gender << ";"
          << node->age << ";"
-         << (node->id_father == -1 ? "" : std::to_string(node->id_father)) << ";"
+         << (node->id_father == -1 ? "" : to_string(node->id_father)) << ";"
          << node->is_dead << ";"
          << node->was_king << ";"
          << node->is_king << "\n";
@@ -241,29 +246,29 @@ void writeNodeToFile(Node* node, std::ofstream& file) {
 // Modificar un nodo del árbol
 void modifyNode(Node* root) {
     int id;
-    std::cout << "Ingrese el ID del nodo a modificar: ";
-    std::cin >> id;
+    cout << "Ingrese el ID del nodo a modificar: ";
+    cin >> id;
 
     Node* node = findNodeByID(root, id);
     if (!node) {
-        std::cout << "Nodo no encontrado.\n";
+        cout << "Nodo no encontrado.\n";
         return;
     }
 
-    std::cout << "Ingrese nuevo nombre: ";
-    std::cin >> node->name;
-    std::cout << "Ingrese nuevo apellido: ";
-    std::cin >> node->last_name;
-    std::cout << "Ingrese género (H/M): ";
-    std::cin >> node->gender;
-    std::cout << "Ingrese nueva edad: ";
-    std::cin >> node->age;
-    std::cout << "¿Está muerto? (0/1): ";
-    std::cin >> node->is_dead;
-    std::cout << "¿Fue rey? (0/1): ";
-    std::cin >> node->was_king;
-    std::cout << "¿Es rey? (0/1): ";
-    std::cin >> node->is_king;
+    cout << "Ingrese nuevo nombre: ";
+    cin >> node->name;
+    cout << "Ingrese nuevo apellido: ";
+    cin >> node->last_name;
+    cout << "Ingrese género (H/M): ";
+    cin >> node->gender;
+    cout << "Ingrese nueva edad: ";
+    cin >> node->age;
+    cout << "¿Está muerto? (0/1): ";
+    cin >> node->is_dead;
+    cout << "¿Fue rey? (0/1): ";
+    cin >> node->was_king;
+    cout << "¿Es rey? (0/1): ";
+    cin >> node->is_king;
 }
 
 // Buscar un nodo por su ID
@@ -274,11 +279,13 @@ Node* findNodeByID(Node* root, int id) {
     return left ? left : findNodeByID(root->right, id);
 }
 
+// Parte de funciones auxiliares
+
 // Crear un archivo CSV con un caso complejo
-void createComplexCSV(const std::string& filename) {
-    std::ofstream file(filename);
+void createComplexCSV(const string& filename) {
+    ofstream file(filename);
     if (!file.is_open()) {
-        std::cerr << "Error al crear el archivo CSV complejo.\n";
+        cerr << "Error al crear el archivo CSV complejo.\n";
         return;
     }
 
@@ -298,8 +305,8 @@ void createComplexCSV(const std::string& filename) {
 // Simulación de caso complejo
 void simulateComplexRun() {
     createComplexCSV("complex_family_tree.csv");
-    Node* root = readCSV("complex_family_tree.csv");
-    std::cout << "\n*** LÍNEA DE SUCESIÓN INICIAL ***\n";
+    Node* root = readCSV();
+    cout << "\n*** LÍNEA DE SUCESIÓN INICIAL ***\n";
     printSuccessionLine(root);
 
     Node* currentKing = findNodeByID(root, 1);
@@ -308,69 +315,65 @@ void simulateComplexRun() {
     Node* newKing = findSuccessor(root);
     if (newKing) newKing->is_king = true;
 
-    std::cout << "\n*** NUEVO REY ***\n";
+    cout << "\n*** NUEVO REY ***\n";
     if (newKing) {
-        std::cout << "ID: " << newKing->id << ", Nombre: " << newKing->name << " " << newKing->last_name << "\n";
+        cout << "ID: " << newKing->id << ", Nombre: " << newKing->name << " " << newKing->last_name << "\n";
     }
 
-    std::cout << "\n*** LÍNEA DE SUCESIÓN ACTUALIZADA ***\n";
+    cout << "\n*** LÍNEA DE SUCESIÓN ACTUALIZADA ***\n";
     printSuccessionLine(root);
 
-    updateCSV(root, "complex_family_tree_updated.csv");
+    updateCSV(root);
 }
 
 // Ejecutar simulaciones
 void runTests(Node* root) {
-    std::cout << "\n*** LÍNEA DE SUCESIÓN ***\n";
+    cout << "\n*** LÍNEA DE SUCESIÓN ***\n";
     printSuccessionLine(root);
 
     Node* newKing = findSuccessor(root);
     if (newKing) {
-        std::cout << "El sucesor es ID: " << newKing->id << ", Nombre: " << newKing->name << " " << newKing->last_name << "\n";
+        cout << "El sucesor es ID: " << newKing->id << ", Nombre: " << newKing->name << " " << newKing->last_name << "\n";
     }
 
-    updateCSV(root, "family_tree_updated.csv");
+    updateCSV(root);
 }
 
 // Main
 int main() {
-    // Variables iniciales
-    std::string inputFile = "family_tree_ordered.csv";
-    std::string outputFile = "family_tree_updated.csv";
-
     // Crear o leer el árbol inicial
-    Node* root = readCSV(inputFile);
+    Node* root = readCSV();
     if (!root) {
-        std::cerr << "Error al cargar el árbol desde el archivo " << inputFile << ". Finalizando programa.\n";
+        cerr << "Error al cargar el árbol desde el archivo " << FILE_NAME << ". Finalizando programa.\n";
         return 1;
     }
 
     int option;
     do {
-        std::cout << "\n*** SISTEMA DE LÍNEA DE SUCESIÓN ***\n";
-        std::cout << "1. Mostrar línea de sucesión\n";
-        std::cout << "2. Buscar sucesor del rey\n";
-        std::cout << "3. Modificar un nodo\n";
-        std::cout << "4. Actualizar archivo CSV\n";
-        std::cout << "5. Simulación de caso complejo\n";
-        std::cout << "6. Salir\n";
-        std::cout << "Seleccione una opción: ";
-        std::cin >> option;
+        cout << "\n*** SISTEMA DE LÍNEA DE SUCESIÓN ***\n";
+        cout << "1. Mostrar línea de sucesión\n";
+        cout << "2. Buscar sucesor del rey\n";
+        cout << "3. Modificar un nodo\n";
+        cout << "4. Actualizar archivo CSV\n";
+        cout << "5. Simulación de caso complejo\n";
+        cout << "6. Salir\n";
+        cout << "Seleccione una opción: ";
+        cin >> option;
 
         switch (option) {
             case 1: {
-                std::cout << "\n*** LÍNEA DE SUCESIÓN ***\n";
+                cout << "\n*** LÍNEA DE SUCESIÓN ***\n";
                 printSuccessionLine(root);
                 break;
             }
             case 2: {
                 Node* successor = findSuccessor(root);
                 if (successor) {
-                    std::cout << "El sucesor del rey es:\n";
-                    std::cout << "ID: " << successor->id << ", Nombre: " << successor->name << " " << successor->last_name
-                              << ", Edad: " << successor->age << "\n";
+                    cout << "El sucesor del rey es:\n";
+                    cout << "ID: " << successor->id << ", Nombre: " << successor->name << " " << successor->last_name
+                         << ", Edad: " << successor->age << "\n";
                 } else {
-                    std::cout << "No hay sucesor disponible en la línea actual.\n";
+                    cout << "No hay sucesor disponible en la línea actual.\n";
                 }
                 break;
             }
@@ -379,7 +382,7 @@ int main() {
                 break;
             }
             case 4: {
-                updateCSV(root, outputFile);
+                updateCSV(root);
                 break;
             }
             case 5: {
@@ -387,11 +390,11 @@ int main() {
                 break;
             }
             case 6: {
-                std::cout << "Saliendo del programa. ¡Hasta luego!\n";
+                cout << "Saliendo del programa. ¡Hasta luego!\n";
                 break;
             }
             default: {
-                std::cout << "Opción inválida. Intente de nuevo.\n";
+                cout << "Opción inválida. Intente de nuevo.\n";
                 break;
             }
         }
