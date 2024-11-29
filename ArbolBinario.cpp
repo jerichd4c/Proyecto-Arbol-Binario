@@ -3,6 +3,7 @@
 #include <sstream>
 #include <string>
 #include <algorithm>
+#include <windows.h>  // Libreria para leer caracteres en español
 using namespace std;
 
 // Definición del nodo del árbol
@@ -25,12 +26,12 @@ struct Node {
 
 // Constante del archivo CSV
 
-const string FILE_NAME = "family_tree_ordered.csv";
+string FILE_NAME;
 
 // Prototipos de funciones
 Node* readCSV();
 bool validateCSVLine(const string& line, int expected_columns);
-void printSuccessionLine(Node* root);
+void printSuccessionLine(Node* root, int level);
 Node* findSuccessor(Node* root);
 Node* findFirstLivingDescendant(Node* node);
 Node* findSibling(Node* root);
@@ -40,6 +41,9 @@ void updateCSV(Node* root);
 void writeNodeToFile(Node* node, ofstream& file);
 void modifyNode(Node* root);
 Node* findNodeByID(Node* root, int id);
+void addFamilyMember(Node*& root);
+void deleteFamilyMember(Node*& root);
+Node* findNodeAndParent(Node* root, int id, Node*& parent);
 
 // Funciones auxiliares
 
@@ -119,14 +123,23 @@ bool validateCSVLine(const string& line, int expected_columns) {
 }
 
 // Mostrar línea de sucesión
-void printSuccessionLine(Node* root) {
+void printSuccessionLine(Node* root, int level = 0) {
     if (!root) return;
-    if (!root->is_dead) {
-        cout << "ID: " << root->id << ", Nombre: " << root->name << " " << root->last_name
-             << ", Edad: " << root->age << "\n";
-    }
-    printSuccessionLine(root->left);
-    printSuccessionLine(root->right);
+
+    // Sangría para mostrar jerarquía
+    string indent(level * 4, ' '); // Cada nivel agrega 4 espacios
+
+    // Formato de impresión
+    cout << indent << "|-- ID: " << root->id 
+         << ", Nombre: " << root->name << " " << root->last_name
+         << ", Edad: " << root->age
+         << ", Estado: " << (root->is_dead ? "Muerto" : "Vivo")
+         << ", " << (root->is_king ? "Rey Actual" : (root->was_king ? "Exrey" : ""))
+         << "\n";
+
+    // Recursión para hijos (primero izquierdo, luego derecho)
+    printSuccessionLine(root->left, level + 1);
+    printSuccessionLine(root->right, level + 1);
 }
 
 // Buscar sucesor del rey
@@ -221,6 +234,9 @@ void updateCSV(Node* root) {
         cerr << "Error al abrir el archivo: " << FILE_NAME << "\n";
         return;
     }
+    
+    // Escribir el encabezado
+    file << "id;name;last_name;gender;age;id_father;is_dead;was_king;is_king\n";
 
     writeNodeToFile(root, file);
     file.close();
@@ -275,8 +291,128 @@ void modifyNode(Node* root) {
 Node* findNodeByID(Node* root, int id) {
     if (!root) return nullptr;
     if (root->id == id) return root;
-    Node* left = findNodeByID(root->left, id);
-    return left ? left : findNodeByID(root->right, id);
+
+    Node* leftSearch = findNodeByID(root->left, id);
+    if (leftSearch) return leftSearch;
+
+    return findNodeByID(root->right, id);
+}
+
+// Agregar un nuevo familiar
+void addFamilyMember(Node*& root) {
+    int id, id_father, age;
+    string name, last_name;
+    char gender;
+    bool is_dead, was_king, is_king;
+
+    cout << "Ingrese los datos del nuevo familiar:\n";
+    cout << "ID: ";
+    cin >> id;
+    cout << "Nombre: ";
+    cin >> name;
+    cout << "Apellido: ";
+    cin >> last_name;
+    cout << "Género (M/F): ";
+    cin >> gender;
+    cout << "Edad: ";
+    cin >> age;
+    cout << "ID del padre: ";
+    cin >> id_father;
+    cout << "¿Está muerto? (1 para Sí, 0 para No): ";
+    cin >> is_dead;
+    cout << "¿Fue rey? (1 para Sí, 0 para No): ";
+    cin >> was_king;
+    cout << "¿Es rey? (1 para Sí, 0 para No): ";
+    cin >> is_king;
+
+    Node* parent = findNodeByID(root, id_father);
+    if (!parent) {
+        cout << "No se encontró un padre con ID: " << id_father << ". No se puede agregar al familiar.\n";
+        return;
+    }
+
+    if (parent->left && parent->right) {
+        cout << "El padre ya tiene dos hijos. No se puede agregar más familiares.\n";
+        return;
+    }
+
+    Node* newNode = new Node(id, name, last_name, gender, age, id_father, is_dead, was_king, is_king);
+    if (!parent->left) {
+        parent->left = newNode;
+    } else {
+        parent->right = newNode;
+    }
+
+    cout << "Familiar agregado correctamente.\n";
+
+    // Actualizar el archivo CSV
+    updateCSV(root);
+}
+
+// Funcion para eliminar un familiar
+
+// Buscar nodo y su padre
+Node* findNodeAndParent(Node* root, int id, Node*& parent) {
+    if (!root) return nullptr;
+
+    if (root->left && root->left->id == id) {
+        parent = root;
+        return root->left;
+    }
+
+    if (root->right && root->right->id == id) {
+        parent = root;
+        return root->right;
+    }
+
+    // Buscar recursivamente en los hijos
+    Node* leftResult = findNodeAndParent(root->left, id, parent);
+    if (leftResult) return leftResult;
+
+    return findNodeAndParent(root->right, id, parent);
+}
+
+void deleteFamilyMember(Node*& root) {
+    if (!root) {
+        cout << "El árbol está vacío. No hay nodos para eliminar.\n";
+        return;
+    }
+
+    int id;
+    cout << "Ingrese el ID del familiar a eliminar: ";
+    cin >> id;
+
+    Node* parent = nullptr;
+    Node* nodeToDelete = findNodeAndParent(root, id, parent);
+
+    if (!nodeToDelete) {
+        cout << "No se encontró un nodo con ID: " << id << ".\n";
+        return;
+    }
+
+    // Si el nodo tiene hijos, no permitir la eliminación directa
+    if (nodeToDelete->left || nodeToDelete->right) {
+        cout << "El nodo tiene hijos. Primero elimine a los hijos o transfiera la línea sucesoria.\n";
+        return;
+    }
+
+    // Eliminar el nodo
+    if (!parent) {
+        // El nodo a eliminar es la raíz
+        delete root;
+        root = nullptr;
+    } else if (parent->left == nodeToDelete) {
+        delete parent->left;
+        parent->left = nullptr;
+    } else if (parent->right == nodeToDelete) {
+        delete parent->right;
+        parent->right = nullptr;
+    }
+
+    cout << "Familiar eliminado correctamente.\n";
+
+    // Actualizar el archivo CSV
+    updateCSV(root);
 }
 
 // Parte de funciones auxiliares
@@ -341,7 +477,15 @@ void runTests(Node* root) {
 
 // Main
 int main() {
-    // Crear o leer el árbol inicial
+
+    // Configurar la consola para usar UTF-8
+    SetConsoleOutputCP(CP_UTF8); // Establece la salida en UTF-8
+    SetConsoleCP(CP_UTF8);       // Establece la entrada en UTF-8
+
+
+    cout << "Ingrese el nombre del archivo CSV a usar (incluyendo extensión, por ejemplo: 'family_tree_ordered.csv'): ";
+    cin >> FILE_NAME;
+
     Node* root = readCSV();
     if (!root) {
         cerr << "Error al cargar el árbol desde el archivo " << FILE_NAME << ". Finalizando programa.\n";
@@ -355,14 +499,14 @@ int main() {
         cout << "2. Buscar sucesor del rey\n";
         cout << "3. Modificar un nodo\n";
         cout << "4. Actualizar archivo CSV\n";
-        cout << "5. Simulación de caso complejo\n";
-        cout << "6. Salir\n";
+        cout << "5. Agregar un familiar\n";
+        cout << "6. Eliminar un familiar\n";
+        cout << "7. Salir\n";
         cout << "Seleccione una opción: ";
         cin >> option;
 
         switch (option) {
             case 1: {
-                cout << "\n*** LÍNEA DE SUCESIÓN ***\n";
                 printSuccessionLine(root);
                 break;
             }
@@ -386,10 +530,14 @@ int main() {
                 break;
             }
             case 5: {
-                simulateComplexRun();
+                addFamilyMember(root);
                 break;
             }
             case 6: {
+                deleteFamilyMember(root);
+                break;
+            }
+            case 7: {
                 cout << "Saliendo del programa. ¡Hasta luego!\n";
                 break;
             }
@@ -398,7 +546,7 @@ int main() {
                 break;
             }
         }
-    } while (option != 6);
+    } while (option != 7);
 
     return 0;
 }
