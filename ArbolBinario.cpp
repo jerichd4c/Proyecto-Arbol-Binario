@@ -42,7 +42,6 @@ void writeNodeToFile(Node* node, ofstream& file);
 void modifyNode(Node* root);
 Node* findNodeByID(Node* root, int id);
 void addFamilyMember(Node*& root);
-void deleteFamilyMember(Node*& root);
 Node* findNodeAndParent(Node* root, int id, Node*& parent);
 
 // Funciones auxiliares
@@ -59,9 +58,7 @@ Node* readCSV() {
         return nullptr;
     }
 
-    Node* root = nullptr;
-    Node* nodes[21] = {nullptr}; // Arreglo para guardar nodos por su ID (máximo 20 nodos)
-
+    Node* root = nullptr; // Puntero raíz del árbol
     string line;
     bool isFirstLine = true;
     const int expected_columns = 9;
@@ -97,16 +94,24 @@ Node* readCSV() {
         bool is_king = stoi(data[8]);
 
         Node* newNode = new Node(id, name, last_name, gender, age, id_father, is_dead, was_king, is_king);
-        nodes[id] = newNode;
 
         if (id_father == -1) {
+            // Este nodo es la raíz
             root = newNode;
-        } else if (nodes[id_father]) {
-            Node* parent = nodes[id_father];
-            if (!parent->left) {
-                parent->left = newNode;
-            } else if (!parent->right) {
-                parent->right = newNode;
+        } else {
+            // Buscar al padre dinámicamente en el árbol
+            Node* parent = findNodeByID(root, id_father);
+            if (parent) {
+                if (!parent->left) {
+                    parent->left = newNode;
+                } else if (!parent->right) {
+                    parent->right = newNode;
+                } else {
+                    cerr << "El padre con ID " << id_father << " ya tiene dos hijos. Ignorando nodo con ID " << id << ".\n";
+                }
+            } else {
+                cerr << "No se encontró un padre con ID " << id_father << ". Nodo ignorado.\n";
+                delete newNode;
             }
         }
     }
@@ -308,6 +313,13 @@ void addFamilyMember(Node*& root) {
     cout << "Ingrese los datos del nuevo familiar:\n";
     cout << "ID: ";
     cin >> id;
+    
+    // Validación: Verificar si el ID ya está en uso
+    if (findNodeByID(root, id)) {
+        cout << "Error: El ID " << id << " ya está en uso. Por favor, ingrese un ID único.\n";
+        return; // Salir sin agregar el nodo
+    }
+
     cout << "Nombre: ";
     cin >> name;
     cout << "Apellido: ";
@@ -349,8 +361,6 @@ void addFamilyMember(Node*& root) {
     updateCSV(root);
 }
 
-// Funcion para eliminar un familiar
-
 // Buscar nodo y su padre
 Node* findNodeAndParent(Node* root, int id, Node*& parent) {
     if (!root) return nullptr;
@@ -370,49 +380,6 @@ Node* findNodeAndParent(Node* root, int id, Node*& parent) {
     if (leftResult) return leftResult;
 
     return findNodeAndParent(root->right, id, parent);
-}
-
-void deleteFamilyMember(Node*& root) {
-    if (!root) {
-        cout << "El árbol está vacío. No hay nodos para eliminar.\n";
-        return;
-    }
-
-    int id;
-    cout << "Ingrese el ID del familiar a eliminar: ";
-    cin >> id;
-
-    Node* parent = nullptr;
-    Node* nodeToDelete = findNodeAndParent(root, id, parent);
-
-    if (!nodeToDelete) {
-        cout << "No se encontró un nodo con ID: " << id << ".\n";
-        return;
-    }
-
-    // Si el nodo tiene hijos, no permitir la eliminación directa
-    if (nodeToDelete->left || nodeToDelete->right) {
-        cout << "El nodo tiene hijos. Primero elimine a los hijos o transfiera la línea sucesoria.\n";
-        return;
-    }
-
-    // Eliminar el nodo
-    if (!parent) {
-        // El nodo a eliminar es la raíz
-        delete root;
-        root = nullptr;
-    } else if (parent->left == nodeToDelete) {
-        delete parent->left;
-        parent->left = nullptr;
-    } else if (parent->right == nodeToDelete) {
-        delete parent->right;
-        parent->right = nullptr;
-    }
-
-    cout << "Familiar eliminado correctamente.\n";
-
-    // Actualizar el archivo CSV
-    updateCSV(root);
 }
 
 // Parte de funciones auxiliares
@@ -479,8 +446,8 @@ void runTests(Node* root) {
 int main() {
 
     // Configurar la consola para usar UTF-8
-    SetConsoleOutputCP(CP_UTF8); // Establece la salida en UTF-8
-    SetConsoleCP(CP_UTF8);       // Establece la entrada en UTF-8
+    SetConsoleOutputCP(CP_UTF8); // Establece la salida en UTF-8, caracteres especiales en español
+    SetConsoleCP(CP_UTF8);       // Establece la entrada en UTF-8, caracteres especiales en español
 
 
     cout << "Ingrese el nombre del archivo CSV a usar (incluyendo extensión, por ejemplo: 'family_tree_ordered.csv'): ";
@@ -500,8 +467,7 @@ int main() {
         cout << "3. Modificar un nodo\n";
         cout << "4. Actualizar archivo CSV\n";
         cout << "5. Agregar un familiar\n";
-        cout << "6. Eliminar un familiar\n";
-        cout << "7. Salir\n";
+        cout << "6. Salir\n";
         cout << "Seleccione una opción: ";
         cin >> option;
 
@@ -534,10 +500,6 @@ int main() {
                 break;
             }
             case 6: {
-                deleteFamilyMember(root);
-                break;
-            }
-            case 7: {
                 cout << "Saliendo del programa. ¡Hasta luego!\n";
                 break;
             }
@@ -546,7 +508,7 @@ int main() {
                 break;
             }
         }
-    } while (option != 7);
+    } while (option != 6);
 
     return 0;
 }

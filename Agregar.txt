@@ -1,2 +1,2 @@
-1. agregar una función para eliminar familiares al .CSV (SIRVE A MEDIAS, el ID anterior y posterior se invierten)
-2. cambiar la función complex case y extender el .CSV con mas personas (ordenado y desordenado)
+1. cambiar la función complex case y extender el .CSV con mas personas (ordenado y desordenado)
+2. probar con lista desordenada.
