@@ -43,12 +43,8 @@ void modifyNode(Node* root);
 Node* findNodeByID(Node* root, int id);
 void addFamilyMember(Node*& root);
 Node* findNodeAndParent(Node* root, int id, Node*& parent);
-
-// Funciones auxiliares
-
-void runTests(Node* root);
-void createComplexCSV(const string& filename);
-void simulateComplexRun();
+void processPendingNodes(Node*& root, Node** pending, int& pending_count);
+void addNodeToTree(Node*& root, Node* newNode);
 
 // Función para leer el CSV y construir el árbol binario
 Node* readCSV() {
@@ -58,10 +54,14 @@ Node* readCSV() {
         return nullptr;
     }
 
-    Node* root = nullptr; // Puntero raíz del árbol
+    Node* root = nullptr;
     string line;
     bool isFirstLine = true;
     const int expected_columns = 9;
+
+    // Arreglo para nodos pendientes
+    Node* pending[100];  // Máximo 100 nodos pendientes
+    int pending_count = 0;
 
     while (getline(file, line)) {
         if (isFirstLine) { // Saltar los headers
@@ -71,7 +71,7 @@ Node* readCSV() {
 
         if (!validateCSVLine(line, expected_columns)) {
             cerr << "Línea inválida encontrada: " << line << "\n";
-            continue; // Ignorar líneas inválidas
+            continue;
         }
 
         stringstream ss(line);
@@ -97,27 +97,67 @@ Node* readCSV() {
 
         if (id_father == -1) {
             // Este nodo es la raíz
-            root = newNode;
+            if (!root) {
+                root = newNode;
+            } else {
+                cerr << "Advertencia: Se encontró más de un nodo raíz. Ignorando nodo con ID " << id << ".\n";
+                delete newNode;
+            }
         } else {
-            // Buscar al padre dinámicamente en el árbol
             Node* parent = findNodeByID(root, id_father);
             if (parent) {
-                if (!parent->left) {
-                    parent->left = newNode;
-                } else if (!parent->right) {
-                    parent->right = newNode;
-                } else {
-                    cerr << "El padre con ID " << id_father << " ya tiene dos hijos. Ignorando nodo con ID " << id << ".\n";
-                }
+                addNodeToTree(parent, newNode);
             } else {
-                cerr << "No se encontró un padre con ID " << id_father << ". Nodo ignorado.\n";
-                delete newNode;
+                // Si el padre no está disponible, agregar a pendientes
+                pending[pending_count++] = newNode;
             }
         }
     }
 
+    // Procesar nodos pendientes
+    processPendingNodes(root, pending, pending_count);
+
     file.close();
     return root;
+}
+
+// Procesar nodos pendientes
+void processPendingNodes(Node*& root, Node** pending, int& pending_count) {
+    int iterations = 0;
+
+    while (pending_count > 0) {
+        bool progress = false;
+
+        for (int i = 0; i < pending_count; ++i) {
+            Node* node = pending[i];
+            Node* parent = findNodeByID(root, node->id_father);
+            if (parent) {
+                addNodeToTree(parent, node);
+                pending[i] = pending[--pending_count];  // Eliminar nodo procesado
+                progress = true;
+                break;  // Reiniciar la búsqueda
+            }
+        }
+
+        if (!progress) {
+            cerr << "Error: No se pudo procesar todos los nodos pendientes después de " << iterations << " iteraciones.\n";
+            break;
+        }
+
+        ++iterations;
+    }
+}
+
+// Agregar un nodo al árbol
+void addNodeToTree(Node*& parent, Node* newNode) {
+    if (!parent->left) {
+        parent->left = newNode;
+    } else if (!parent->right) {
+        parent->right = newNode;
+    } else {
+        cerr << "El padre con ID " << parent->id << " ya tiene dos hijos. Ignorando nodo con ID " << newNode->id << ".\n";
+        delete newNode;
+    }
 }
 
 // Funcion para validar el .CSV
@@ -382,66 +422,6 @@ Node* findNodeAndParent(Node* root, int id, Node*& parent) {
     return findNodeAndParent(root->right, id, parent);
 }
 
-// Parte de funciones auxiliares
-
-// Crear un archivo CSV con un caso complejo
-void createComplexCSV(const string& filename) {
-    ofstream file(filename);
-    if (!file.is_open()) {
-        cerr << "Error al crear el archivo CSV complejo.\n";
-        return;
-    }
-
-    file << "id;name;last_name;gender;age;id_father;is_dead;was_king;is_king\n";
-    file << "1;Arthur;Royal;H;80;;0;1;1\n";
-    file << "2;Richard;Royal;H;68;1;0;1;0\n";
-    file << "3;Catherine;Royal;M;44;2;0;0;0\n";
-    file << "4;John;Royal;H;30;2;0;0;0\n";
-    file << "5;Alice;Royal;M;40;3;1;0;0\n";
-    file << "6;George;Royal;H;25;3;0;0;0\n";
-    file << "7;Edward;Royal;H;20;4;0;0;0\n";
-    file << "8;Sophia;Royal;M;18;4;0;0;0\n";
-
-    file.close();
-}
-
-// Simulación de caso complejo
-void simulateComplexRun() {
-    createComplexCSV("complex_family_tree.csv");
-    Node* root = readCSV();
-    cout << "\n*** LÍNEA DE SUCESIÓN INICIAL ***\n";
-    printSuccessionLine(root);
-
-    Node* currentKing = findNodeByID(root, 1);
-    if (currentKing) currentKing->is_dead = true;
-
-    Node* newKing = findSuccessor(root);
-    if (newKing) newKing->is_king = true;
-
-    cout << "\n*** NUEVO REY ***\n";
-    if (newKing) {
-        cout << "ID: " << newKing->id << ", Nombre: " << newKing->name << " " << newKing->last_name << "\n";
-    }
-
-    cout << "\n*** LÍNEA DE SUCESIÓN ACTUALIZADA ***\n";
-    printSuccessionLine(root);
-
-    updateCSV(root);
-}
-
-// Ejecutar simulaciones
-void runTests(Node* root) {
-    cout << "\n*** LÍNEA DE SUCESIÓN ***\n";
-    printSuccessionLine(root);
-
-    Node* newKing = findSuccessor(root);
-    if (newKing) {
-        cout << "El sucesor es ID: " << newKing->id << ", Nombre: " << newKing->name << " " << newKing->last_name << "\n";
-    }
-
-    updateCSV(root);
-}
-
 // Main
 int main() {
 
@@ -450,8 +430,21 @@ int main() {
     SetConsoleCP(CP_UTF8);       // Establece la entrada en UTF-8, caracteres especiales en español
 
 
-    cout << "Ingrese el nombre del archivo CSV a usar (incluyendo extensión, por ejemplo: 'family_tree_ordered.csv'): ";
-    cin >> FILE_NAME;
+    int option2;
+    cout << "Seleccione el archivo CSV a usar:\n";
+    cout << "1. family_tree_ordered.csv\n";
+    cout << "2. family_tree_unordered.csv\n";
+    cout << "Ingrese su opción (1 o 2): ";
+    cin >> option2;
+
+    if (option2 == 1) {
+        FILE_NAME = "family_tree_ordered.csv";
+    } else if (option2 == 2) {
+        FILE_NAME = "family_tree_unordered.csv";
+    } else {
+        cerr << "Opción inválida. Finalizando programa.\n";
+        return 1;
+    }
 
     Node* root = readCSV();
     if (!root) {

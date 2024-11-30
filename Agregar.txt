@@ -1,2 +1,1 @@
 1. cambiar la función complex case y extender el .CSV con mas personas (ordenado y desordenado)
-2. probar con lista desordenada.
