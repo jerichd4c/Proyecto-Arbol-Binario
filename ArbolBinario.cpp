@@ -49,6 +49,7 @@ void collectLivingDescendants(Node* node, Node**& successionList, int& size);
 bool isInList(Node* node, Node** list, int size);
 void addToLineOfSuccession(Node**& list, int& size, Node* node);
 Node* findKing(Node* root);
+void killKing(Node*& root);
 
 // Función para leer el CSV y construir el árbol binario
 Node* readCSV() {
@@ -195,47 +196,53 @@ void printTree(Node* root, int level = 0) {
 Node* findSuccessor(Node* root) {
     if (!root) return nullptr;
 
-    // Si es rey y ha muerto o tiene más de 70 años
+    cout << "Buscando sucesor para el nodo con ID: " << root->id << "\n";
+
     if (root->is_king && (root->is_dead || root->age > 70)) {
-        // Buscar en hijos directos
+        cout << "Evaluando hijos de " << root->id << "\n";
         Node* successor = findFirstLivingDescendant(root->left);
         if (!successor) successor = findFirstLivingDescendant(root->right);
 
-        // Si no hay hijos vivos, buscar en hermanos
         if (!successor) {
+            cout << "Evaluando hermanos de " << root->id << "\n";
             Node* sibling = findSibling(root);
             successor = findFirstLivingDescendant(sibling);
         }
 
-        // Si no hay hermanos vivos, buscar en tíos
         if (!successor) {
+            cout << "Evaluando tíos de " << root->id << "\n";
             Node* uncle = findUncle(root);
             successor = findFirstLivingDescendant(uncle);
         }
 
-        // Si todo falla, buscar en ancestros con múltiples hijos
         if (!successor) {
+            cout << "Evaluando ancestros con múltiples hijos de " << root->id << "\n";
             Node* ancestor = findAncestorWithMultipleChildren(root);
             successor = findFirstLivingDescendant(ancestor);
         }
 
-        return successor;
+        if (successor) {
+            cout << "Sucesor encontrado: " << successor->name << "\n";
+            return successor;
+        } else {
+            cout << "No se encontró un sucesor válido.\n";
+            return nullptr;
+        }
     }
 
-    // Recursión en subárbol izquierdo y derecho
     Node* leftSuccessor = findSuccessor(root->left);
     if (leftSuccessor) return leftSuccessor;
+
     return findSuccessor(root->right);
 }
 
 // Buscar hermano
 Node* findSibling(Node* root) {
-    if (!root || root->id_father == -1) return nullptr; // Sin padre => Sin hermanos
+    if (!root || root->id_father == -1) return nullptr;
 
     Node* parent = findNodeByID(root, root->id_father);
     if (!parent) return nullptr;
 
-    // Hermano es el otro hijo del padre
     if (parent->left && parent->left != root) return parent->left;
     if (parent->right && parent->right != root) return parent->right;
     return nullptr;
@@ -248,7 +255,6 @@ Node* findUncle(Node* root) {
     Node* grandparent = findNodeByID(root, findNodeByID(root, root->id_father)->id_father);
     if (!grandparent) return nullptr;
 
-    // Buscar los hijos del abuelo que no sean el padre del nodo
     if (grandparent->left && grandparent->left->id != root->id_father) return grandparent->left;
     if (grandparent->right && grandparent->right->id != root->id_father) return grandparent->right;
     return nullptr;
@@ -259,8 +265,8 @@ Node* findAncestorWithMultipleChildren(Node* root) {
     if (!root || root->id_father == -1) return nullptr;
 
     Node* parent = findNodeByID(root, root->id_father);
-    if (parent && parent->left && parent->right) return parent; // Padre con 2 hijos
-    return findAncestorWithMultipleChildren(parent); // Subir un nivel
+    if (parent && parent->left && parent->right) return parent;
+    return findAncestorWithMultipleChildren(parent);
 }
 
 // Encontrar el primer descendiente vivo
@@ -321,9 +327,10 @@ void modifyNode(Node* root) {
     }
 
     cout << "Ingrese nuevo nombre: ";
-    cin >> node->name;
+    cin.ignore(); // Limpiar el buffer del cin
+    getline(cin, node->name); // Permitir espacios en el nombre
     cout << "Ingrese nuevo apellido: ";
-    cin >> node->last_name;
+    getline(cin, node->last_name); // Permitir espacios en el apellido
     cout << "Ingrese género (H/M): ";
     cin >> node->gender;
     cout << "Ingrese nueva edad: ";
@@ -335,7 +342,18 @@ void modifyNode(Node* root) {
     cout << "¿Es rey? (0/1): ";
     cin >> node->is_king;
 
-    // Actualizar el archivo CSV
+    // Si el nodo modificado es rey y las condiciones de herencia se cumplen
+    Node* currentKing = findKing(root);
+    cout << "Rey actual encontrado: " << (currentKing ? currentKing->name : "Ninguno") << "\n";
+    cout << "Estado del nodo antes de modificación: ID=" << node->id << ", is_king=" << node->is_king << ", is_dead=" << node->is_dead << ", age=" << node->age << "\n";
+    if (node == currentKing && (node->is_dead || node->age > 70 || !node->is_king)) {
+        cout << "El nodo modificado es el rey actual y cumple las condiciones de herencia. Buscando sucesor...\n";
+
+        // Ejecutar la función killKing automáticamente
+        killKing(root);
+    }
+
+    // Actualizar el archivo CSV para reflejar los cambios en el nodo modificado
     updateCSV(root);
 }
 
@@ -513,7 +531,6 @@ void addToLineOfSuccession(Node**& list, int& size, Node* node) {
 }
 
 // Funcion para MATAR el rey
-
 void killKing(Node*& root) {
     Node* king = findKing(root);
     if (!king) {
@@ -623,6 +640,10 @@ int main() {
             }
             case 6: {
                 showCurrentKing(root);
+                break;
+            }
+            case 7: {
+                cout << "Saliendo del programa...\n";
                 break;
             }
             default: {
