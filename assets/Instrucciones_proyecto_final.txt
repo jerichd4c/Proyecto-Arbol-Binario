@@ -1,0 +1,71 @@
+Proyecto final de estructura dinámica de datos (enfocado en arboles BINARIOS)
+
+Una familia de un reino ha estado manteniendo registro de los descendientes del primer rey desde hace años. Cada rey solo ha generado un máximo de DOS herederos en todo su reinado, siendo siempre el PRIMOGENITO en heredar el trono, con casos donde si toda la rama del rey actual llega a desaparecer entonces se asigna como rey el primer primogénito de la rama de su HERMANO.
+
+Funciones a realizar:
+
+1. Convertir dese un .csv (Excel) los datos en un árbol binario, el .csv debe tener las siguientes columnas:
+
+id;name;last_name;gender;age;id_father;is_dead;was_king;is_king. ( el ';' representa la separación entre datos) ej:
+
+1;Arthur;Royal;H;80;;0;1;1
+2;Richard;Royal;H;68;1;0;1;1
+3;Richard;Royal;H;34;2;0;0;0
+4;Catherine;Royal;M;44;3;1;0;0
+5;Alice;Royal;M;70;4;0;0;0
+
+ESPECIFICACIONES DEL .CSV:
+
+*es recomendado que sean máximo 20 familiares para tener el árbol familiar corto.
+
+*solo puede haber un ID_father.
+
+*todos los apellidos tienen que ser iguales.
+
+*en el apartado "gender", solo hay hombres y mujeres representados como (H o M).
+
+*los valores para "was_king", "is_king", "is_dead" es de 0 o 1. 1 siendo afirmativo y 0 negativo.
+
+*Solo puede ser un archivo.CSV, no se pueden crear mas.
+
+*El archivo tiene que tener los headers incluidos de forma obligatoria.
+
+2. Mostrar la linea de sucesión actual (solo los familiares vivos).
+
+3. Asignar un nodo como rey de manera automática en caso de morir el rey actual, las condiciones de asignación son:
+
+	* Si el rey murió Y tiene hijos, el rey es el primer primogenito VIVO encontrado de su árbol.
+
+	* Si el rey murió Y NO tiene hijos, el rey es el primer primogenito vivo encontrado del árbol de su hermano.
+
+	* Si el hermano esta VIVO y no tiene hijos, el hermano se vuelve rey.
+
+	*Si el rey murió y no tiene hermanos ni hijos, el rey es el primer primogenito VIVO encontrado del árbol de su tio.
+
+	*Si su tio esta vivo y no tiene hijos, su tio se vuelve rey.
+
+	* Si el rey murió Y NO se puede hallar ni su tio ni su hermano, buscar el primer ancestro con dos hijos y elegir como rey el primer primogenito vivo del árbol del ancestro.
+
+	* Si todos los primogénitos están muertos, seguir las mismas reglas para los hijos segundos, empezando desde el primero hallado desde el rey actual, es decir tratar a los segundos como primogénitos, hasta que se logre cumplir otra vez la condición de un primogenito puro.
+
+	* Si un rey paso de los 70 años, la corona se pasa al primer primogenito vivo de su árbol.
+
+4. Cambiar los datos en el .CSV de cualquier nodo del árbol, menos "id" y "id_father", ya que son identificadores únicos.
+
+especificaciones:
+
+1.seguir siempre FIFO y LIFO, en el caso de que se vayan a usar pilas y colas.
+2.no se pueden usar vectores.
+3.no se pueden usar <queue> y <maps>.
+4.el numero de prioridades puede crecer, es decir no es estático, en el caso de que se vayan a usar.
+5.tiene que tener un menú con el input del usuario, hasta que el usuario diga tiene que seguir ejecutándose.
+6.el programa tiene que ser capaz de manejar archivos ordenados y desordenados.
+7.es recomendable el uso de rotaciones.
+8.es un árbol binario, es decir no se tiene que auto balancearse pero es recomendable.
+9.SOLO PUEDE HABER UN REY.
+10.no se pueden perder datos.
+11.la raíz del árbol es el rey, este puede estar vivo o muerto.
+12.en teoría la raíz seria siempre la misma ya que es el primer rey del reino.
+13.el output tiene que mostrar solo los vivos en forma de lista (no es necesario que se vea en forma de árbol)
+14.tios comparten el mismo padre.
+15.no se pueden usar las librerías <queue> ni <stack> en el caso de que se quieran usar.
