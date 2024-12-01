@@ -14,7 +14,7 @@ id;name;last_name;gender;age;id_father;is_dead;was_king;is_king
 19;Isabella;Royal;M;22;7;0;0;0
 4;John;Royal;H;30;2;0;0;0
 18;Thomas;Royal;H;45;9;0;0;0
-2;Richard;Royal;H;68;1;0;1;0
+2;Richard;Royal;H;68;1;0;0;0
 9;William;Royal;H;70;1;0;0;0
 16;Amelia;Royal;M;19;6;0;0;0
 5;Alice;Royal;M;40;3;1;0;0

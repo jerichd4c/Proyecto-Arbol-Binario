@@ -1,1 +1,4 @@
-1. cambiar la función complex case y extender el .CSV con mas personas (ordenado y desordenado)
+1. CORREGIR: asignar rey a través de modificar el nodo.
+2. CORREGIR: arreglar función matar rey deteniéndose al final.
+CONSIDERAR: evaluar que las condiciones esten correctas.
+

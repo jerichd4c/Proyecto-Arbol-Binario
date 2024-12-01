@@ -31,7 +31,7 @@ string FILE_NAME;
 // Prototipos de funciones
 Node* readCSV();
 bool validateCSVLine(const string& line, int expected_columns);
-void printSuccessionLine(Node* root, int level);
+void printTree(Node* root, int level);
 Node* findSuccessor(Node* root);
 Node* findFirstLivingDescendant(Node* node);
 Node* findSibling(Node* root);
@@ -45,6 +45,10 @@ void addFamilyMember(Node*& root);
 Node* findNodeAndParent(Node* root, int id, Node*& parent);
 void processPendingNodes(Node*& root, Node** pending, int& pending_count);
 void addNodeToTree(Node*& root, Node* newNode);
+void collectLivingDescendants(Node* node, Node**& successionList, int& size);
+bool isInList(Node* node, Node** list, int size);
+void addToLineOfSuccession(Node**& list, int& size, Node* node);
+Node* findKing(Node* root);
 
 // Función para leer el CSV y construir el árbol binario
 Node* readCSV() {
@@ -167,8 +171,8 @@ bool validateCSVLine(const string& line, int expected_columns) {
     return count == expected_columns;
 }
 
-// Mostrar línea de sucesión
-void printSuccessionLine(Node* root, int level = 0) {
+// Mostrar el arbol familiar
+void printTree(Node* root, int level = 0) {
     if (!root) return;
 
     // Sangría para mostrar jerarquía
@@ -183,8 +187,8 @@ void printSuccessionLine(Node* root, int level = 0) {
          << "\n";
 
     // Recursión para hijos (primero izquierdo, luego derecho)
-    printSuccessionLine(root->left, level + 1);
-    printSuccessionLine(root->right, level + 1);
+    printTree(root->left, level + 1);
+    printTree(root->right, level + 1);
 }
 
 // Buscar sucesor del rey
@@ -330,6 +334,9 @@ void modifyNode(Node* root) {
     cin >> node->was_king;
     cout << "¿Es rey? (0/1): ";
     cin >> node->is_king;
+
+    // Actualizar el archivo CSV
+    updateCSV(root);
 }
 
 // Buscar un nodo por su ID
@@ -422,6 +429,134 @@ Node* findNodeAndParent(Node* root, int id, Node*& parent) {
     return findNodeAndParent(root->right, id, parent);
 }
 
+// Para mostrar la linea de sucesión actual (solo los familiares vivos)
+
+// Mostrar línea de sucesión
+void showLineOfSuccession(Node* root) {
+    
+    if (!root) {
+        cout << "El árbol está vacío.\n";
+        return;
+    }
+
+    Node* currentKing = findKing(root);
+    if (!currentKing) {
+        cout << "No hay un rey actual.\n";
+        return;
+    }
+
+    // Arreglo dinámico para la línea de sucesión
+    Node** lineOfSuccession = nullptr;
+    int size = 0;
+
+    Node* current = currentKing;
+
+    // Si el rey actual no es válido, buscar al sucesor
+    if (currentKing->is_dead || currentKing->age > 70) {
+        current = findSuccessor(currentKing);
+    }
+
+    if (!current) {
+        cout << "No se encontró ningún sucesor.\n";
+        return;
+    }
+
+    // Agregar al rey o sucesor actual al arreglo
+    addToLineOfSuccession(lineOfSuccession, size, current);
+
+    // Buscar descendientes vivos
+    collectLivingDescendants(current, lineOfSuccession, size);
+
+    // Mostrar la línea de sucesión
+    cout << "Línea de sucesión al trono:\n";
+    for (int i = 0; i < size; ++i) {
+        cout << "Nombre: " << lineOfSuccession[i]->name 
+                  << ", ID: " << lineOfSuccession[i]->id 
+                  << ", Edad: " << lineOfSuccession[i]->age << "\n";
+    }
+
+    // Liberar memoria del arreglo dinámico
+    delete[] lineOfSuccession;
+}
+
+// Colectar todos los descendientes vivos en orden de sucesión
+void collectLivingDescendants(Node* node, Node**& successionList, int& size) {
+    if (!node || node->is_dead) return;
+
+    // Añadir descendientes izquierdos primero (por prioridad)
+    if (node->left) collectLivingDescendants(node->left, successionList, size);
+    if (!isInList(node, successionList, size)) {
+        addToLineOfSuccession(successionList, size, node);
+    }
+    // Añadir descendientes derechos
+    if (node->right) collectLivingDescendants(node->right, successionList, size);
+}
+
+// Verificar si un nodo ya está en la lista
+bool isInList(Node* node, Node** list, int size) {
+    for (int i = 0; i < size; ++i) {
+        if (list[i] == node) return true;
+    }
+    return false;
+}
+
+// Agregar un nodo al arreglo dinámico
+void addToLineOfSuccession(Node**& list, int& size, Node* node) {
+    Node** temp = new Node*[size + 1];
+    for (int i = 0; i < size; ++i) {
+        temp[i] = list[i];
+    }
+    temp[size] = node;
+    delete[] list; // Liberar memoria del arreglo anterior
+    list = temp;
+    ++size;
+}
+
+// Funcion para MATAR el rey
+
+void killKing(Node*& root) {
+    Node* king = findKing(root);
+    if (!king) {
+        cout << "No hay un rey actual.\n";
+        return;
+    }
+    king->is_dead = true;
+    cout << "El rey actual ha sido marcado como muerto.\n";
+
+    // Asignar nuevo rey automáticamente
+    Node* successor = findSuccessor(root);
+    if (successor) {
+        king->is_king = false;
+        king->was_king = true;
+        successor->is_king = true;
+        cout << "El nuevo rey es: " << successor->name << ".\n";
+    } else {
+        cout << "No se encontró un sucesor para el trono.\n";
+    }
+
+    // Actualizar el archivo CSV
+    updateCSV(root);
+}
+
+Node* findKing(Node* root) {
+    if (!root) return nullptr;
+    if (root->is_king) return root;
+
+    Node* leftKing = findKing(root->left);
+    if (leftKing) return leftKing;
+    return findKing(root->right);
+}
+
+void showCurrentKing(Node* root) {
+    Node* king = findKing(root);
+    if (!king) {
+        cout << "No hay un rey actual.\n";
+        return;
+    }
+    cout << "El rey actual es: " << king->name << ", ID: " << king->id
+              << ", Edad: " << king->age << (king->is_dead ? " (muerto)\n" : "\n");
+}
+
 // Main
 int main() {
 
@@ -455,45 +590,39 @@ int main() {
     int option;
     do {
         cout << "\n*** SISTEMA DE LÍNEA DE SUCESIÓN ***\n";
-        cout << "1. Mostrar línea de sucesión\n";
-        cout << "2. Buscar sucesor del rey\n";
+        cout << "1. Mostrar arbol familiar\n";
+        cout << "2. Mostrar la línea de sucesión\n";
         cout << "3. Modificar un nodo\n";
-        cout << "4. Actualizar archivo CSV\n";
-        cout << "5. Agregar un familiar\n";
-        cout << "6. Salir\n";
+        cout << "4. Agregar un familiar\n";
+        cout << "5. Matar el rey\n";
+        cout << "6. Mostrar rey actual\n";
+        cout << "7. Salir\n";
         cout << "Seleccione una opción: ";
         cin >> option;
 
         switch (option) {
             case 1: {
-                printSuccessionLine(root);
+                printTree(root);
                 break;
             }
             case 2: {
-                Node* successor = findSuccessor(root);
-                if (successor) {
-                    cout << "El sucesor del rey es:\n";
-                    cout << "ID: " << successor->id << ", Nombre: " << successor->name << " " << successor->last_name
-                         << ", Edad: " << successor->age << "\n";
-                } else {
-                    cout << "No hay sucesor disponible en la línea actual.\n";
-                }
-                break;
+                showLineOfSuccession(root);
+            break;
             }
             case 3: {
                 modifyNode(root);
                 break;
             }
             case 4: {
-                updateCSV(root);
-                break;
-            }
-            case 5: {
                 addFamilyMember(root);
                 break;
             }
+            case 5: {
+                killKing(root);
+                break;
+            }
             case 6: {
-                cout << "Saliendo del programa. ¡Hasta luego!\n";
+                showCurrentKing(root);
                 break;
             }
             default: {
@@ -501,7 +630,7 @@ int main() {
                 break;
             }
         }
-    } while (option != 6);
+    } while (option != 7);
 
     return 0;
 }
