@@ -1,6 +1,6 @@
 id;name;last_name;gender;age;id_father;is_dead;was_king;is_king
 1;Arthur;Royal;H;80;;0;1;1
-2;Richard;Royal;H;68;1;0;1;1
+2;Richard;Royal;H;68;1;0;1;0
 3;Edward;Royal;H;66;1;0;0;0
 4;William;Royal;H;50;2;0;0;0
 5;Catherine;Royal;M;44;2;1;0;0

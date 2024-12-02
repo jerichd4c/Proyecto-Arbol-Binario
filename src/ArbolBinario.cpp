@@ -249,80 +249,56 @@ void printTree(Node* root, int level = 0) {
 }
 
 // Buscar sucesor del rey
-Node* findSuccessor(Node* root) {
-    if (!root) return nullptr;
+Node* findSuccessor(Node* king) {
+    if (!king) return nullptr;
 
-    if (root->is_king && (root->is_dead || root->age > 70)) {
-        Node* successor = nullptr;
+    // 1. Buscar el primer primogénito vivo en su árbol
+    Node* successor = findFirstLivingDescendant(king->left);
+    if (successor) return successor;
 
-        // 1. Buscar el primer primogénito vivo en su árbol
-        successor = findFirstLivingDescendant(root->left);
-        if (!successor) successor = findFirstLivingDescendant(root->right);
+    successor = findFirstLivingDescendant(king->right);
+    if (successor) return successor;
 
-        // 2. Buscar el hermano vivo más cercano
-        if (!successor) {
-            Node* sibling = findSibling(root);
-            if (sibling && !sibling->is_dead) {
-                successor = sibling;
-            } else if (sibling) {
-                successor = findFirstLivingDescendant(sibling);
-            }
-        }
-
-        // 3. Buscar tíos y su descendencia
-        if (!successor) {
-            Node* uncle = findUncle(root);
-            if (uncle && !uncle->is_dead) {
-                successor = uncle;
-            } else if (uncle) {
-                successor = findFirstLivingDescendant(uncle);
-            }
-        }
-
-        // 4. Buscar ancestro con varios hijos y elegir el descendiente vivo más cercano
-        if (!successor) {
-            Node* ancestor = findAncestorWithMultipleChildren(root);
-            if (ancestor) {
-                successor = findFirstLivingDescendant(ancestor);
-            }
-        }
-
-        // 5. Si todos los primogénitos están muertos, buscar descendientes secundarios
-        if (!successor) {
-            successor = findSecondLivingDescendant(root);
-        }
-
-        // Si no se encuentra sucesor
-        if (!successor) {
-            cout << "No se encontró sucesor para el rey actual.\n";
-        }
-
-        return successor;
+    // 2. Buscar el hermano vivo más cercano
+    Node* sibling = findSibling(king);
+    if (sibling) {
+        successor = findFirstLivingDescendant(sibling);
+        if (successor) return successor;
     }
 
-    // Recursión para buscar sucesor en los hijos
-    Node* leftSuccessor = findSuccessor(root->left);
-    if (leftSuccessor) return leftSuccessor;
+    // 3. Buscar tíos y su descendencia
+    Node* uncle = findUncle(king);
+    if (uncle) {
+        successor = findFirstLivingDescendant(uncle);
+        if (successor) return successor;
+    }
 
-    return findSuccessor(root->right);
+    // 4. Buscar ancestro con múltiples hijos
+    Node* ancestor = findAncestorWithMultipleChildren(king);
+    if (ancestor) {
+        successor = findFirstLivingDescendant(ancestor);
+        if (successor) return successor;
+    }
+
+    // 5. Buscar el primer primogénito secundario
+    successor = findSecondLivingDescendant(king);
+    return successor;
 }
 
-// Función para encontrar el primer descendiente vivo
 Node* findFirstLivingDescendant(Node* node) {
     if (!node) return nullptr;
     if (!node->is_dead) return node;
-    
-    Node* leftDescendant = findFirstLivingDescendant(node->left);
-    if (leftDescendant) return leftDescendant; 
 
-    return findFirstLivingDescendant(node->right); 
+    Node* leftDescendant = findFirstLivingDescendant(node->left);
+    if (leftDescendant) return leftDescendant;
+
+    return findFirstLivingDescendant(node->right);
 }
 
-// Función para encontrar el segundo descendiente vivo
 Node* findSecondLivingDescendant(Node* node) {
     if (!node) return nullptr;
 
-    // Buscar primero en el subárbol izquierdo
+    // Buscar en el subárbol izquierdo
     Node* leftDescendant = findFirstLivingDescendant(node->left);
     if (leftDescendant) {
         Node* secondLeftDescendant = findFirstLivingDescendant(node->left->left);
@@ -338,8 +314,7 @@ Node* findSecondLivingDescendant(Node* node) {
         if (secondRightDescendant) return secondRightDescendant;
     }
 
-    // Si no se encuentra, seguir buscando en otros niveles del árbol
-    return findSecondLivingDescendant(node->left) ? findSecondLivingDescendant(node->left) : findSecondLivingDescendant(node->right);
+    return nullptr; // Si no se encuentra, retornar nullptr
 }
 
 // Buscar hermano
@@ -600,7 +575,6 @@ Node* findNodeAndParent(Node* root, int id, Node*& parent) {
 
 // Mostrar línea de sucesión
 void showLineOfSuccession(Node* root) {
-    
     if (!root) {
         cout << "El árbol está vacío.\n";
         return;
@@ -613,7 +587,7 @@ void showLineOfSuccession(Node* root) {
     }
 
     // Arreglo dinámico para la línea de sucesión
-    Node** lineOfSuccession = nullptr;
+    Node** lineOfSuccession = nullptr; // Inicialmente nullptr
     int size = 0;
 
     Node* current = currentKing;
@@ -646,20 +620,21 @@ void showLineOfSuccession(Node* root) {
     delete[] lineOfSuccession;
 }
 
-// Colectar todos los descendientes vivos en orden de sucesión
 void collectLivingDescendants(Node* node, Node**& successionList, int& size) {
     if (!node || node->is_dead) return;
 
     // Añadir descendientes izquierdos primero (por prioridad)
-    if (node->left) collectLivingDescendants(node->left, successionList, size);
+    collectLivingDescendants(node->left, successionList, size);
+    
+    // Asegurarse de que el nodo no esté ya en la lista
     if (!isInList(node, successionList, size)) {
         addToLineOfSuccession(successionList, size, node);
     }
+    
     // Añadir descendientes derechos
-    if (node->right) collectLivingDescendants(node->right, successionList, size);
+    collectLivingDescendants(node->right, successionList, size);
 }
 
-// Verificar si un nodo ya está en la lista
 bool isInList(Node* node, Node** list, int size) {
     for (int i = 0; i < size; ++i) {
         if (list[i] == node) return true;
@@ -667,33 +642,43 @@ bool isInList(Node* node, Node** list, int size) {
     return false;
 }
 
-// Agregar un nodo al arreglo dinámico
 void addToLineOfSuccession(Node**& list, int& size, Node* node) {
+    // Si la lista es nullptr, inicializarla
     Node** temp = new Node*[size + 1];
+    
+    // Copiar los elementos existentes a la nueva lista
     for (int i = 0; i < size; ++i) {
         temp[i] = list[i];
     }
+    
+    // Agregar el nuevo nodo
     temp[size] = node;
-    delete[] list; // Liberar memoria del arreglo anterior
-    list = temp;
-    ++size;
+
+    // Liberar memoria de la lista anterior
+    delete[] list; 
+    list = temp; // Actualizar la lista
+    ++size; // Incrementar el tamaño
 }
 
-// Funcion para MATAR el rey
 void killKing(Node*& root) {
     Node* king = findKing(root);
     if (!king) {
         cout << "No hay un rey actual.\n";
         return;
     }
-    king->is_dead = true;
-    cout << "El rey actual murio/ya no es apto para ser rey.\n";
 
-    // Asignar nuevo rey automáticamente
+    // Marcar al rey como muerto
+    king->is_dead = true;
+    cout << "El rey actual ha muerto o ya no es apto para ser rey.\n";
+
+    // Intentar encontrar un nuevo rey
     Node* successor = findSuccessor(root);
     if (successor) {
+        // Actualizar el estado del rey actual
         king->is_king = false;
         king->was_king = true;
+
+        // Asignar el nuevo rey
         successor->is_king = true;
         cout << "El nuevo rey es: " << successor->name << ".\n";
     } else {
