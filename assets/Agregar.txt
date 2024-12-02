@@ -1,3 +1,0 @@
-1. CORREGIR: arreglar función matar rey deteniéndose al final.
-CONSIDERAR: evaluar que las condiciones esten correctas.
-

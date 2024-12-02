@@ -50,6 +50,8 @@ bool isInList(Node* node, Node** list, int size);
 void addToLineOfSuccession(Node**& list, int& size, Node* node);
 Node* findKing(Node* root);
 void killKing(Node*& root);
+Node* findSecondLivingDescendant(Node* node);
+void collectNodes(Node* root, Node**& nodes, int& size, int& capacity);
 
 // Función para leer el CSV y construir el árbol binario
 Node* readCSV() {
@@ -59,27 +61,66 @@ Node* readCSV() {
         return nullptr;
     }
 
-    Node* root = nullptr;
+    // Tamaño inicial del arreglo
+    int capacity = 10;  
+    string* lines = new string[capacity];
+    int line_count = 0;
+
     string line;
     bool isFirstLine = true;
     const int expected_columns = 9;
 
-    // Arreglo para nodos pendientes
-    Node* pending[100];  // Máximo 100 nodos pendientes
-    int pending_count = 0;
-
+    // Leer todas las líneas del archivo
     while (getline(file, line)) {
         if (isFirstLine) { // Saltar los headers
             isFirstLine = false;
             continue;
         }
+        
+        // Redimensionar el arreglo si es necesario
+        if (line_count >= capacity) {
+            capacity *= 2;
+            string* new_lines = new string[capacity];
+            for (int i = 0; i < line_count; ++i) {
+                new_lines[i] = lines[i];
+            }
+            delete[] lines;
+            lines = new_lines;
+        }
 
-        if (!validateCSVLine(line, expected_columns)) {
-            cerr << "Línea inválida encontrada: " << line << "\n";
+        lines[line_count++] = line;
+    }
+
+    // Ordenar las líneas por ID del padre (id_father)
+    for (int i = 0; i < line_count - 1; ++i) {
+        for (int j = 0; j < line_count - i - 1; ++j) {
+            stringstream ssA(lines[j]);
+            stringstream ssB(lines[j + 1]);
+            string wordA, wordB;
+            string dataA[9], dataB[9];
+            int index = 0;
+
+            while (getline(ssA, wordA, ';')) dataA[index++] = wordA;
+            index = 0;
+            while (getline(ssB, wordB, ';')) dataB[index++] = wordB;
+
+            int id_father_A = dataA[5].empty() ? -1 : stoi(dataA[5]);
+            int id_father_B = dataB[5].empty() ? -1 : stoi(dataB[5]);
+
+            if (id_father_A > id_father_B) {
+                swap(lines[j], lines[j + 1]);
+            }
+        }
+    }
+
+    Node* root = nullptr;
+    for (int i = 0; i < line_count; ++i) {
+        if (!validateCSVLine(lines[i], expected_columns)) {
+            cerr << "Línea inválida encontrada: " << lines[i] << "\n";
             continue;
         }
 
-        stringstream ss(line);
+        stringstream ss(lines[i]);
         string word;
         string data[9];
         int index = 0;
@@ -113,43 +154,59 @@ Node* readCSV() {
             if (parent) {
                 addNodeToTree(parent, newNode);
             } else {
-                // Si el padre no está disponible, agregar a pendientes
-                pending[pending_count++] = newNode;
+                cerr << "Advertencia: Padre no encontrado para el nodo con ID " << id << ".\n";
+                delete newNode;
             }
         }
     }
 
-    // Procesar nodos pendientes
-    processPendingNodes(root, pending, pending_count);
-
+    delete[] lines;  // Liberar memoria del arreglo dinámico
     file.close();
     return root;
+}
+
+// Función para comparar nodos según el id del padre
+bool compareNodes(Node* a, Node* b) {
+    return a->id_father < b->id_father;
 }
 
 // Procesar nodos pendientes
 void processPendingNodes(Node*& root, Node** pending, int& pending_count) {
     int iterations = 0;
+    bool progress;
 
-    while (pending_count > 0) {
-        bool progress = false;
+    do {
+        progress = false;
+
+        // Ordenar nodos pendientes por ID de los padres
+        sort(pending, pending + pending_count, compareNodes);
 
         for (int i = 0; i < pending_count; ++i) {
             Node* node = pending[i];
             Node* parent = findNodeByID(root, node->id_father);
             if (parent) {
-                addNodeToTree(parent, node);
-                pending[i] = pending[--pending_count];  // Eliminar nodo procesado
-                progress = true;
-                break;  // Reiniciar la búsqueda
+                if (parent->left == nullptr || parent->right == nullptr) {
+                    addNodeToTree(parent, node);
+                    pending[i] = pending[--pending_count];  // Eliminar nodo procesado
+                    progress = true;
+                } else {
+                    cerr << "El padre con ID " << parent->id << " ya tiene dos hijos. Ignorando nodo con ID " << node->id << ".\n";
+                    delete node;  // Eliminar nodo no procesado
+                    pending[i] = pending[--pending_count];
+                }
             }
         }
+        iterations++;
+    } while (progress && iterations < 100); // Limitar iteraciones para evitar bucles infinitos
 
-        if (!progress) {
-            cerr << "Error: No se pudo procesar todos los nodos pendientes después de " << iterations << " iteraciones.\n";
-            break;
+    // Verificar y reportar nodos pendientes no procesados
+    if (pending_count > 0) {
+        cerr << "Error: No se pudo procesar todos los nodos pendientes después de " << iterations << " iteraciones.\n";
+        for (int i = 0; i < pending_count; ++i) {
+            cerr << "Nodo pendiente no procesado: ID=" << pending[i]->id << ", ID_Padre=" << pending[i]->id_father << "\n";
+            delete pending[i];
         }
-
-        ++iterations;
+        pending_count = 0;  // Limpiar la lista de nodos pendientes
     }
 }
 
@@ -166,7 +223,6 @@ void addNodeToTree(Node*& parent, Node* newNode) {
 }
 
 // Funcion para validar el .CSV
-
 bool validateCSVLine(const string& line, int expected_columns) { 
     int count = std::count(line.begin(), line.end(), ';') + 1;
     return count == expected_columns;
@@ -196,44 +252,94 @@ void printTree(Node* root, int level = 0) {
 Node* findSuccessor(Node* root) {
     if (!root) return nullptr;
 
-    cout << "Buscando sucesor para el nodo con ID: " << root->id << "\n";
-
     if (root->is_king && (root->is_dead || root->age > 70)) {
-        cout << "Evaluando hijos de " << root->id << "\n";
-        Node* successor = findFirstLivingDescendant(root->left);
+        Node* successor = nullptr;
+
+        // 1. Buscar el primer primogénito vivo en su árbol
+        successor = findFirstLivingDescendant(root->left);
         if (!successor) successor = findFirstLivingDescendant(root->right);
 
+        // 2. Buscar el hermano vivo más cercano
         if (!successor) {
-            cout << "Evaluando hermanos de " << root->id << "\n";
             Node* sibling = findSibling(root);
-            successor = findFirstLivingDescendant(sibling);
+            if (sibling && !sibling->is_dead) {
+                successor = sibling;
+            } else if (sibling) {
+                successor = findFirstLivingDescendant(sibling);
+            }
         }
 
+        // 3. Buscar tíos y su descendencia
         if (!successor) {
-            cout << "Evaluando tíos de " << root->id << "\n";
             Node* uncle = findUncle(root);
-            successor = findFirstLivingDescendant(uncle);
+            if (uncle && !uncle->is_dead) {
+                successor = uncle;
+            } else if (uncle) {
+                successor = findFirstLivingDescendant(uncle);
+            }
         }
 
+        // 4. Buscar ancestro con varios hijos y elegir el descendiente vivo más cercano
         if (!successor) {
-            cout << "Evaluando ancestros con múltiples hijos de " << root->id << "\n";
             Node* ancestor = findAncestorWithMultipleChildren(root);
-            successor = findFirstLivingDescendant(ancestor);
+            if (ancestor) {
+                successor = findFirstLivingDescendant(ancestor);
+            }
         }
 
-        if (successor) {
-            cout << "Sucesor encontrado: " << successor->name << "\n";
-            return successor;
-        } else {
-            cout << "No se encontró un sucesor válido.\n";
-            return nullptr;
+        // 5. Si todos los primogénitos están muertos, buscar descendientes secundarios
+        if (!successor) {
+            successor = findSecondLivingDescendant(root);
         }
+
+        // Si no se encuentra sucesor
+        if (!successor) {
+            cout << "No se encontró sucesor para el rey actual.\n";
+        }
+
+        return successor;
     }
 
+    // Recursión para buscar sucesor en los hijos
     Node* leftSuccessor = findSuccessor(root->left);
     if (leftSuccessor) return leftSuccessor;
 
     return findSuccessor(root->right);
+}
+
+// Función para encontrar el primer descendiente vivo
+Node* findFirstLivingDescendant(Node* node) {
+    if (!node) return nullptr;
+    if (!node->is_dead) return node;
+    
+    Node* leftDescendant = findFirstLivingDescendant(node->left);
+    if (leftDescendant) return leftDescendant; 
+
+    return findFirstLivingDescendant(node->right); 
+}
+
+// Función para encontrar el segundo descendiente vivo
+Node* findSecondLivingDescendant(Node* node) {
+    if (!node) return nullptr;
+
+    // Buscar primero en el subárbol izquierdo
+    Node* leftDescendant = findFirstLivingDescendant(node->left);
+    if (leftDescendant) {
+        Node* secondLeftDescendant = findFirstLivingDescendant(node->left->left);
+        if (!secondLeftDescendant) secondLeftDescendant = findFirstLivingDescendant(node->left->right);
+        if (secondLeftDescendant) return secondLeftDescendant;
+    }
+
+    // Buscar en el subárbol derecho
+    Node* rightDescendant = findFirstLivingDescendant(node->right);
+    if (rightDescendant) {
+        Node* secondRightDescendant = findFirstLivingDescendant(node->right->left);
+        if (!secondRightDescendant) secondRightDescendant = findFirstLivingDescendant(node->right->right);
+        if (secondRightDescendant) return secondRightDescendant;
+    }
+
+    // Si no se encuentra, seguir buscando en otros niveles del árbol
+    return findSecondLivingDescendant(node->left) ? findSecondLivingDescendant(node->left) : findSecondLivingDescendant(node->right);
 }
 
 // Buscar hermano
@@ -269,38 +375,83 @@ Node* findAncestorWithMultipleChildren(Node* root) {
     return findAncestorWithMultipleChildren(parent);
 }
 
-// Encontrar el primer descendiente vivo
-Node* findFirstLivingDescendant(Node* node) {
-    if (!node) return nullptr;
-    if (!node->is_dead) return node;
-    Node* leftDescendant = findFirstLivingDescendant(node->left);
-    return leftDescendant ? leftDescendant : findFirstLivingDescendant(node->right);
-}
-
-// Actualizar el archivo CSV
 void updateCSV(Node* root) {
     if (!root) {
         cout << "El árbol está vacío, no hay datos para guardar.\n";
         return;
     }
 
+    // Inicializar arreglo dinámico para recolectar nodos
+    int capacity = 100;
+    int size = 0;
+    Node** nodes = new Node*[capacity];
+    collectNodes(root, nodes, size, capacity);
+
+    // Ordenar los nodos por ID utilizando burbuja (bubble sort)
+    for (int i = 0; i < size - 1; ++i) {
+        for (int j = 0; j < size - i - 1; ++j) {
+            if (nodes[j]->id > nodes[j + 1]->id) {
+                swap(nodes[j], nodes[j + 1]);
+            }
+        }
+    }
+
+    // Abrir archivo CSV para escritura
     ofstream file(FILE_NAME);
     if (!file.is_open()) {
         cerr << "Error al abrir el archivo: " << FILE_NAME << "\n";
+        delete[] nodes;
         return;
     }
-    
-    // Escribir el encabezado
+
+    // Escribir encabezado
     file << "id;name;last_name;gender;age;id_father;is_dead;was_king;is_king\n";
 
-    writeNodeToFile(root, file);
+    // Escribir nodos ordenados en el archivo
+    for (int i = 0; i < size; ++i) {
+        Node* node = nodes[i];
+        file << node->id << ";"
+             << node->name << ";"
+             << node->last_name << ";"
+             << node->gender << ";"
+             << node->age << ";"
+             << (node->id_father == -1 ? "" : to_string(node->id_father)) << ";"
+             << node->is_dead << ";"
+             << node->was_king << ";"
+             << node->is_king << "\n";
+    }
+
+    // Cerrar archivo y liberar memoria
     file.close();
+    delete[] nodes;
     cout << "Datos actualizados en el archivo CSV correctamente.\n";
+}
+
+// Función para recolectar nodos
+void collectNodes(Node* root, Node**& nodes, int& size, int& capacity) {
+    if (!root) return;
+
+    // Redimensionar arreglo si es necesario
+    if (size >= capacity) {
+        capacity *= 2;
+        Node** new_nodes = new Node*[capacity];
+        for (int i = 0; i < size; ++i) {
+            new_nodes[i] = nodes[i];
+        }
+        delete[] nodes;
+        nodes = new_nodes;
+    }
+
+    cout << "Recolectando nodo ID: " << root->id <<"\n";
+    nodes[size++] = root;
+    collectNodes(root->left, nodes, size, capacity);
+    collectNodes(root->right, nodes, size, capacity);
 }
 
 // Escribir un nodo en el archivo
 void writeNodeToFile(Node* node, ofstream& file) {
     if (!node) return;
+    cout << "Escribiendo nodo ID: " << node->id << "\n";
     file << node->id << ";"
          << node->name << ";"
          << node->last_name << ";"
@@ -389,7 +540,7 @@ void addFamilyMember(Node*& root) {
     cin >> name;
     cout << "Apellido: ";
     cin >> last_name;
-    cout << "Género (M/F): ";
+    cout << "Género (H/M): ";
     cin >> gender;
     cout << "Edad: ";
     cin >> age;
@@ -446,8 +597,6 @@ Node* findNodeAndParent(Node* root, int id, Node*& parent) {
 
     return findNodeAndParent(root->right, id, parent);
 }
-
-// Para mostrar la linea de sucesión actual (solo los familiares vivos)
 
 // Mostrar línea de sucesión
 void showLineOfSuccession(Node* root) {
@@ -555,6 +704,7 @@ void killKing(Node*& root) {
     updateCSV(root);
 }
 
+// Buscar el rey actual
 Node* findKing(Node* root) {
     if (!root) return nullptr;
     if (root->is_king) return root;
@@ -564,6 +714,7 @@ Node* findKing(Node* root) {
     return findKing(root->right);
 }
 
+// Mostrar el rey actual
 void showCurrentKing(Node* root) {
     Node* king = findKing(root);
     if (!king) {
