@@ -702,7 +702,7 @@ Node* findKing(Node* root) {
 // Mostrar el rey actual
 void showCurrentKing(Node* root) {
     Node* king = findKing(root);
-    if (!king) {
+    if (!king || king->is_dead) {
         cout << "No hay un rey actual.\n";
         return;
     }
