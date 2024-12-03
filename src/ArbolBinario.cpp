@@ -52,6 +52,7 @@ Node* findKing(Node* root);
 void killKing(Node*& root);
 Node* findSecondLivingDescendant(Node* node);
 void collectNodes(Node* root, Node**& nodes, int& size, int& capacity);
+void abdicateKing(Node*& root);
 
 // Función para leer el CSV y construir el árbol binario
 Node* readCSV() {
@@ -453,10 +454,10 @@ void modifyNode(Node* root) {
     }
 
     cout << "Ingrese nuevo nombre: ";
-    cin.ignore(); // Limpiar el buffer del cin
-    getline(cin, node->name); // Permitir espacios en el nombre
+    cin.ignore(); // Clean the buffer
+    getline(cin, node->name); // Allow spaces in the name
     cout << "Ingrese nuevo apellido: ";
-    getline(cin, node->last_name); // Permitir espacios en el apellido
+    getline(cin, node->last_name); // Allow spaces in the last name
     cout << "Ingrese género (H/M): ";
     cin >> node->gender;
     cout << "Ingrese nueva edad: ";
@@ -468,18 +469,25 @@ void modifyNode(Node* root) {
     cout << "¿Es rey? (0/1): ";
     cin >> node->is_king;
 
-    // Si el nodo modificado es rey y las condiciones de herencia se cumplen
+    // Check if the modified node is the current king
     Node* currentKing = findKing(root);
     cout << "Rey actual encontrado: " << (currentKing ? currentKing->name : "Ninguno") << "\n";
-    cout << "Estado del nodo antes de modificación: ID= " << node->id << ", is_king= " << node->is_king << ", is_dead= " << node->is_dead << ", age= " << node->age << "\n";
-    if (node == currentKing && (node->is_dead || node->age > 70 || !node->is_king)) {
-        cout << "El nodo modificado es el rey actual y cumple las condiciones de herencia. Buscando sucesor...\n";
-
-        // Ejecutar la función killKing automáticamente
-        killKing(root);
+    
+    // If the current king is modified
+    if (node == currentKing) {
+        // Check if the king is marked as dead
+        if (node->is_dead) {
+            cout << "El rey actual ha sido marcado como muerto. Ejecutando killKing...\n";
+            killKing(root);
+        } 
+        // Check if the king meets the conditions to abdicate
+        else if (node->age > 70 || !node->is_king) {
+            cout << "El nodo modificado es el rey actual y cumple las condiciones para abdicar. Abdicando...\n";
+            abdicateKing(root);
+        }
     }
 
-    // Actualizar el archivo CSV para reflejar los cambios en el nodo modificado
+    // Update the CSV file to reflect changes in the modified node
     updateCSV(root);
 }
 
@@ -703,6 +711,31 @@ Node* findKing(Node* root) {
     return findKing(root->right);
 }
 
+// Funcion para destronar el rey (sin matarlo)
+void abdicateKing(Node*& root) {
+    Node* king = findKing(root);
+    if (!king) {
+        cout << "No hay un rey actual.\n";
+        return;
+    }
+
+    // Mark the current king as no longer king
+    king->is_king = false;
+    king->was_king = true; // Optionally mark them as an ex-king
+
+    // Find a successor and make them the new king
+    Node* successor = findSuccessor(root);
+    if (successor) {
+        successor->is_king = true; // Assign the new king
+        cout << "El nuevo rey es: " << successor->name << ".\n";
+    } else {
+        cout << "No se encontró un sucesor para el trono.\n";
+    }
+
+    // Update the CSV file
+    updateCSV(root);
+}
+
 // Mostrar el rey actual
 void showCurrentKing(Node* root) {
     Node* king = findKing(root);
@@ -720,7 +753,6 @@ int main() {
     // Configurar la consola para usar UTF-8
     SetConsoleOutputCP(CP_UTF8); // Establece la salida en UTF-8, caracteres especiales en español
     SetConsoleCP(CP_UTF8);       // Establece la entrada en UTF-8, caracteres especiales en español
-
 
     int option2;
     cout << "Seleccione el archivo CSV a usar:\n";
