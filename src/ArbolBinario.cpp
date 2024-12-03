@@ -581,8 +581,8 @@ void showLineOfSuccession(Node* root) {
     }
 
     Node* currentKing = findKing(root);
-    if (!currentKing) {
-        cout << "No hay un rey actual.\n";
+    if (!currentKing || currentKing->is_dead) {
+        cout << "No hay un rey actual o el rey actual está muerto.\n";
         return;
     }
 
@@ -590,30 +590,34 @@ void showLineOfSuccession(Node* root) {
     Node** lineOfSuccession = nullptr; // Inicialmente nullptr
     int size = 0;
 
-    Node* current = currentKing;
-
     // Si el rey actual no es válido, buscar al sucesor
     if (currentKing->is_dead || currentKing->age > 70) {
-        current = findSuccessor(currentKing);
+        currentKing = findSuccessor(currentKing);
     }
 
-    if (!current) {
+    // Verificar si hay un sucesor
+    if (!currentKing) {
         cout << "No se encontró ningún sucesor.\n";
         return;
     }
 
     // Agregar al rey o sucesor actual al arreglo
-    addToLineOfSuccession(lineOfSuccession, size, current);
+    addToLineOfSuccession(lineOfSuccession, size, currentKing);
 
     // Buscar descendientes vivos
-    collectLivingDescendants(current, lineOfSuccession, size);
+    collectLivingDescendants(currentKing, lineOfSuccession, size);
 
-    // Mostrar la línea de sucesión
-    cout << "Línea de sucesión al trono:\n";
-    for (int i = 0; i < size; ++i) {
-        cout << "Nombre: " << lineOfSuccession[i]->name 
+    // Verificar si hay descendientes vivos
+    if (size == 0) {
+        cout << "No hay descendientes vivos en la línea de sucesión.\n";
+    } else {
+        // Mostrar la línea de sucesión
+        cout << "Línea de sucesión al trono:\n";
+        for (int i = 0; i < size; ++i) {
+            cout << "Nombre: " << lineOfSuccession[i]->name 
                   << ", ID: " << lineOfSuccession[i]->id 
                   << ", Edad: " << lineOfSuccession[i]->age << "\n";
+        }
     }
 
     // Liberar memoria del arreglo dinámico
